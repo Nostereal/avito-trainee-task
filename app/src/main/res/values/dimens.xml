@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="normal_margin_size">8dp</dimen>
-    <dimen name="choose_services_title_text_size">24sp</dimen>
-    <dimen name="medium_margin_size">16dp</dimen>
-    <dimen name="service_item_text_size">22sp</dimen>
     <dimen name="small_margin_size">4dp</dimen>
+    <dimen name="normal_margin_size">8dp</dimen>
+    <dimen name="medium_margin_size">16dp</dimen>
+    <dimen name="big_margin_size">24dp</dimen>
+
+    <dimen name="choose_services_title_text_size">24sp</dimen>
+    <dimen name="service_item_text_size">22sp</dimen>
     <dimen name="save_filter_btn_text_size">18sp</dimen>
 </resources>

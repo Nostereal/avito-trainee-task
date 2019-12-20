@@ -9,26 +9,24 @@ import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.CameraPosition
 
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.snackbar.Snackbar
-import com.google.gson.Gson
-import com.nostereal.avitotest.models.Pin
+import com.google.maps.android.clustering.ClusterManager
 import com.nostereal.avitotest.models.PinsData
 import com.nostereal.avitotest.models.ParcelableSet
 import kotlinx.android.synthetic.main.activity_maps.*
-import java.io.InputStream
-import kotlin.reflect.KClass
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
-    private lateinit var mMap: GoogleMap
+    private lateinit var map: GoogleMap
+    private lateinit var clusterManager: ClusterManager<MapClusterItem>
     private lateinit var pinsData: PinsData
 
-    private lateinit var servicesToShow: Set<String>
+    private lateinit var servicesToShow: Set<String> // or HashSet if sequence doesn't matter
 
     companion object {
         const val FILTER_REQUEST_CODE: Int = 100
         const val SERVICE_SET_EXTRA_NAME = "Services"
+        const val SERVICES_TO_SHOW_SET_EXTRA_NAME = "ServicesToShow"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,12 +38,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
 
         val inputStream = assets.open("pins.json")
-        pinsData = convertJsonToClass(inputStream, PinsData::class)
+        pinsData = inputStream.convertJsonToDataClass(PinsData::class)
         servicesToShow = pinsData.services.toSet()
 
         fabToFilterActivity.setOnClickListener {
             val intent = Intent(this, FilterActivity::class.java).apply {
                 putExtra(SERVICE_SET_EXTRA_NAME, ParcelableSet(pinsData.services.toSet()))
+                putExtra(SERVICES_TO_SHOW_SET_EXTRA_NAME, ParcelableSet(servicesToShow))
             }
 
             startActivityForResult(intent, FILTER_REQUEST_CODE)
@@ -54,11 +53,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (data == null) {
+            Log.d("MapsActivity", "data (intent) in onActivityResult is null")
+            return
+        }
 
-        if (data == null || resultCode == Activity.RESULT_CANCELED) {
+        if (resultCode == Activity.RESULT_CANCELED) {
             Snackbar.make(
                 mapActivityRootView,
-                "Nothing was selected",
+                "Filter wasn't saved",
                 Snackbar.LENGTH_SHORT
             ).show()
             return
@@ -69,20 +72,26 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 Log.d("MapsActivity", "Result is OK, filtering markers...")
 
                 // get filtered services from FilterActivity
-
-                Log.d("MapsActivity", "parcelableExtra = ${data.getParcelableExtra<ParcelableSet>(FilterActivity.FILTERED_SERVICES_SET_RESULT_EXTRA)}")
+                Log.d(
+                    "MapsActivity",
+                    "parcelableExtra = ${data.getParcelableExtra<ParcelableSet>(FilterActivity.FILTERED_SERVICES_SET_RESULT_EXTRA)}"
+                )
                 val filteredServices =
                     data.getParcelableExtra<ParcelableSet>(FilterActivity.FILTERED_SERVICES_SET_RESULT_EXTRA)?.data
                         ?: servicesToShow
 
                 if (filteredServices != servicesToShow) {
                     Log.d("MapsActivity", "Filtered services != servicesToShow")
-                    mMap.clear()
+
+                    // clear old markers from the map
+                    clusterManager.clearItems()
+                    map.clear()
 
                     servicesToShow = filteredServices
                     val filteredPins = pinsData.pins.filter { it.service in servicesToShow }
 
-                    mMap.addMarkersFromList(filteredPins)
+                    clusterManager.addClusterItemsFromList(filteredPins)
+                    clusterManager.cluster() // force clusters update
                 }
             }
         }
@@ -98,40 +107,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
      * installed Google Play services and returned to the app.
      */
     override fun onMapReady(googleMap: GoogleMap) {
-        mMap = googleMap.apply { addMarkersFromList(pinsData.pins) }
+        map = googleMap
+
+        clusterManager = ClusterManager(this, map)
 
         val randomPinCoordinates = pinsData.pins.random().coordinates
-        mMap.moveCamera(
-            CameraUpdateFactory.newCameraPosition(
-                CameraPosition.fromLatLngZoom(
-                    LatLng(
-                        randomPinCoordinates.latitude,
-                        randomPinCoordinates.longitude
-                    ),
-                    11f // zoom
+        map.apply {
+            setOnCameraIdleListener(clusterManager)
+            setOnMarkerClickListener(clusterManager)
+
+            moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.fromLatLngZoom(
+                        LatLng(
+                            randomPinCoordinates.latitude,
+                            randomPinCoordinates.longitude
+                        ),
+                        11f // zoom
+                    )
                 )
             )
-        )
-    }
-
-    private fun <T : Any> convertJsonToClass(
-        inputStream: InputStream,
-        dataClass: KClass<T>
-    ): T {
-        val json = inputStream.bufferedReader().use { it.readText() }
-        return Gson().fromJson(json, dataClass.java)
-    }
-
-
-    /**
-     * Adds all markers from the list to the specified map
-     */
-    private fun GoogleMap.addMarkersFromList(markers: List<Pin>) {
-        markers.forEach { pin ->
-            val coordinates = pin.coordinates
-            val pos = LatLng(coordinates.latitude, coordinates.longitude)
-            this.addMarker(MarkerOptions().position(pos).title("Service: ${pin.service}"))
         }
 
+
+        clusterManager.addClusterItemsFromList(pinsData.pins)
     }
 }

@@ -5,7 +5,6 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.nostereal.avitotest.models.ParcelableSet
 import kotlinx.android.synthetic.main.activity_filter.*
@@ -24,10 +23,18 @@ class FilterActivity : AppCompatActivity() {
         val serviceAdapter = ServiceFilterAdapter()
 
         intent?.also {
-            val services: Set<String> =
+            val allServicesSet: Set<String> =
                 it.getParcelableExtra<ParcelableSet>(MapsActivity.SERVICE_SET_EXTRA_NAME)?.data
                     ?: emptySet()
-            serviceAdapter.addServicesCollection(services)
+            val servicesToShowSet: Set<String> =
+                it.getParcelableExtra<ParcelableSet>(MapsActivity.SERVICES_TO_SHOW_SET_EXTRA_NAME)?.data
+                    ?: emptySet()
+
+            serviceAdapter.apply {
+                addServicesCollection(allServicesSet)
+                // to restore filter state
+                selectedServicesSet = servicesToShowSet
+            }
         }
 
         rv_services.apply {
@@ -41,7 +48,6 @@ class FilterActivity : AppCompatActivity() {
 
             Log.d("FilterActivity", "Adapter items count = ${serviceAdapter.itemCount}")
             for (pos in 0 until serviceAdapter.itemCount) {
-                // WARNING
                 val viewHolder = rv_services.findViewHolderForAdapterPosition(pos)!!
                 val checkedTextView = viewHolder.itemView.service_checked_tv
 
@@ -53,7 +59,6 @@ class FilterActivity : AppCompatActivity() {
             val resultIntent = Intent().apply {
                 putExtra(FILTERED_SERVICES_SET_RESULT_EXTRA, ParcelableSet(selectedServices))
             }
-            Toast.makeText(this, "Selected Services: $selectedServices", Toast.LENGTH_LONG).show()
 
             setResult(Activity.RESULT_OK, resultIntent)
             finish()

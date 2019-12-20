@@ -10,12 +10,18 @@ class ServiceFilterAdapter : RecyclerView.Adapter<ServiceFilterAdapter.ServiceFi
 
     private var servicesList: MutableList<String> = mutableListOf()
 
+    var selectedServicesSet: Set<String> = setOf()
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = ServiceFilterViewHolder(parent)
 
     override fun getItemCount(): Int = servicesList.size
 
+    override fun onBindViewHolder(holder: ServiceFilterViewHolder, position: Int) {
+        holder.bind(servicesList[position])
+    }
 
-    class ServiceFilterViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class ServiceFilterViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+
         constructor(parent: ViewGroup) :
                 this(
                     LayoutInflater.from(parent.context).inflate(
@@ -28,16 +34,14 @@ class ServiceFilterAdapter : RecyclerView.Adapter<ServiceFilterAdapter.ServiceFi
         fun bind(service: String) {
             itemView.service_checked_tv.apply {
                 text = service
+                isChecked = service in selectedServicesSet
 
                 setOnClickListener {
                     this.toggle()
                 }
             }
         }
-    }
 
-    override fun onBindViewHolder(holder: ServiceFilterViewHolder, position: Int) {
-        holder.bind(servicesList[position])
     }
 
     fun addServicesCollection(services: Collection<String>) {
@@ -49,5 +53,4 @@ class ServiceFilterAdapter : RecyclerView.Adapter<ServiceFilterAdapter.ServiceFi
     }
 
     fun getServiceAt(position: Int) = servicesList[position]
-
 }

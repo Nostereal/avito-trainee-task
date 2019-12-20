@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal">
+
+    <CheckedTextView
+        android:id="@+id/service_checked_tv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/small_margin_size"
+        android:checkMark="?android:attr/listChoiceIndicatorMultiple"
+        tools:checked="true"
+        android:gravity="center_vertical"
+        android:paddingStart="@dimen/normal_margin_size"
+        android:textColor="@color/absolute_black"
+        android:textSize="@dimen/service_item_text_size"
+        tools:text="service a" />
+
+</LinearLayout>

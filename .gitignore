@@ -48,6 +48,3 @@ app/src/debug/res/values/google_maps_api.xml
 
 # Version control
 vcs.xml
-
-# Readme sources
-src-for-readme 

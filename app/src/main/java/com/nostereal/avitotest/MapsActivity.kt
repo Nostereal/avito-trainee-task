@@ -141,7 +141,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    suspend fun readDataFromJson() = withContext(Dispatchers.IO) {
+    private suspend fun readDataFromJson() = withContext(Dispatchers.Default) {
         val inputStream = assets.open("pins.json")
         pinsData = inputStream.convertJsonToDataClass(PinsData::class)
     }

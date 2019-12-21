@@ -34,7 +34,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         setContentView(R.layout.activity_maps)
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
+            .findFragmentById(R.id.mapFragmentView) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
         val inputStream = assets.open("pins.json")
@@ -53,28 +53,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (data == null) {
-            Log.d("MapsActivity", "data (intent) in onActivityResult is null")
-            return
-        }
-
-        if (resultCode == Activity.RESULT_CANCELED) {
-            Snackbar.make(
-                mapActivityRootView,
-                "Filter wasn't saved",
-                Snackbar.LENGTH_SHORT
-            ).show()
-            return
-        }
 
         if (requestCode == FILTER_REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_CANCELED) {
+                Snackbar.make(
+                    mapFragmentView.view!!,
+                    "Filter wasn't saved",
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+
             if (resultCode == Activity.RESULT_OK) {
                 Log.d("MapsActivity", "Result is OK, filtering markers...")
 
                 // get filtered services from FilterActivity
                 Log.d(
                     "MapsActivity",
-                    "parcelableExtra = ${data.getParcelableExtra<ParcelableSet>(FilterActivity.FILTERED_SERVICES_SET_RESULT_EXTRA)}"
+                    "parcelableExtra = ${data!!.getParcelableExtra<ParcelableSet>(FilterActivity.FILTERED_SERVICES_SET_RESULT_EXTRA)}"
                 )
                 val filteredServices =
                     data.getParcelableExtra<ParcelableSet>(FilterActivity.FILTERED_SERVICES_SET_RESULT_EXTRA)?.data
@@ -123,12 +118,26 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                             randomPinCoordinates.latitude,
                             randomPinCoordinates.longitude
                         ),
-                        11f // zoom
+                        11f // zoom level
                     )
                 )
             )
-        }
 
+            // slide up fab because of map layout
+            setOnMarkerClickListener {
+                fabToFilterActivity.slideUpAnimation()
+                false
+            }
+
+            // slide down fab
+            setOnInfoWindowCloseListener {
+                fabToFilterActivity.slideDownAnimation()
+            }
+            setOnMapClickListener {
+                fabToFilterActivity.slideDownAnimation()
+            }
+
+        }
 
         clusterManager.addClusterItemsFromList(pinsData.pins)
     }

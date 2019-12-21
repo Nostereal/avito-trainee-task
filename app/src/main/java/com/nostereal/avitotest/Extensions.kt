@@ -1,5 +1,7 @@
 package com.nostereal.avitotest
 
+import android.view.animation.LinearInterpolator
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.maps.android.clustering.ClusterItem
 import com.google.maps.android.clustering.ClusterManager
@@ -25,4 +27,20 @@ fun <T : Any> InputStream.convertJsonToDataClass(
 ): T {
     val json = this.bufferedReader().use { it.readText() }
     return Gson().fromJson(json, dataClass.java)
+}
+
+fun FloatingActionButton.slideUpAnimation() {
+    this.animate().apply {
+        duration = 300
+        interpolator = LinearInterpolator()
+        translationY(-130f)
+    }.start()
+}
+
+fun FloatingActionButton.slideDownAnimation() {
+    this.animate().apply {
+        duration = 300
+        interpolator = LinearInterpolator()
+        translationY(0f)
+    }
 }

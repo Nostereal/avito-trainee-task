@@ -42,8 +42,8 @@ class FilterActivity : AppCompatActivity() {
             adapter = serviceAdapter
         }
 
+        // handle saving filters and passing it to the map activity
         btn_saveFilter.setOnClickListener {
-            // handle saving filters and passing it to the map activity
             val selectedServices: MutableSet<String> = mutableSetOf()
 
             Log.d("FilterActivity", "Adapter items count = ${serviceAdapter.itemCount}")

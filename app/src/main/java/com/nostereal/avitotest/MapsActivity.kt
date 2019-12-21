@@ -14,6 +14,7 @@ import com.google.maps.android.clustering.ClusterManager
 import com.nostereal.avitotest.models.PinsData
 import com.nostereal.avitotest.models.ParcelableSet
 import kotlinx.android.synthetic.main.activity_maps.*
+import kotlinx.coroutines.*
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -37,16 +38,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             .findFragmentById(R.id.mapFragmentView) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-        val inputStream = assets.open("pins.json")
-        pinsData = inputStream.convertJsonToDataClass(PinsData::class)
-        servicesToShow = pinsData.services.toSet()
-
         fabToFilterActivity.setOnClickListener {
             val intent = Intent(this, FilterActivity::class.java).apply {
                 putExtra(SERVICE_SET_EXTRA_NAME, ParcelableSet(pinsData.services.toSet()))
                 putExtra(SERVICES_TO_SHOW_SET_EXTRA_NAME, ParcelableSet(servicesToShow))
             }
-
             startActivityForResult(intent, FILTER_REQUEST_CODE)
         }
     }
@@ -106,39 +102,47 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         clusterManager = ClusterManager(this, map)
 
-        val randomPinCoordinates = pinsData.pins.random().coordinates
-        map.apply {
-            setOnCameraIdleListener(clusterManager)
-            setOnMarkerClickListener(clusterManager)
+        CoroutineScope(Dispatchers.Main).launch {
+            readDataFromJson()
+            servicesToShow = pinsData.services.toSet()
+            clusterManager.addClusterItemsFromList(pinsData.pins)
 
-            moveCamera(
-                CameraUpdateFactory.newCameraPosition(
-                    CameraPosition.fromLatLngZoom(
-                        LatLng(
-                            randomPinCoordinates.latitude,
-                            randomPinCoordinates.longitude
-                        ),
-                        11f // zoom level
+            val randomPinCoordinates = pinsData.pins.random().coordinates
+            map.apply {
+                setOnCameraIdleListener(clusterManager)
+                setOnMarkerClickListener(clusterManager)
+
+                moveCamera(
+                    CameraUpdateFactory.newCameraPosition(
+                        CameraPosition.fromLatLngZoom(
+                            LatLng(
+                                randomPinCoordinates.latitude,
+                                randomPinCoordinates.longitude
+                            ),
+                            11f // zoom level
+                        )
                     )
                 )
-            )
 
-            // slide up fab because of map layout
-            setOnMarkerClickListener {
-                fabToFilterActivity.slideUpAnimation()
-                false
-            }
+                // slide up fab because of map layout
+                setOnMarkerClickListener {
+                    fabToFilterActivity.slideUpAnimation()
+                    false
+                }
 
-            // slide down fab
-            setOnInfoWindowCloseListener {
-                fabToFilterActivity.slideDownAnimation()
+                // slide down fab
+                setOnInfoWindowCloseListener {
+                    fabToFilterActivity.slideDownAnimation()
+                }
+                setOnMapClickListener {
+                    fabToFilterActivity.slideDownAnimation()
+                }
             }
-            setOnMapClickListener {
-                fabToFilterActivity.slideDownAnimation()
-            }
-
         }
+    }
 
-        clusterManager.addClusterItemsFromList(pinsData.pins)
+    suspend fun readDataFromJson() = withContext(Dispatchers.IO) {
+        val inputStream = assets.open("pins.json")
+        pinsData = inputStream.convertJsonToDataClass(PinsData::class)
     }
 }

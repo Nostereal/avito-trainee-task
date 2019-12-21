@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">AvitoTest</string>
     <string name="title_activity_maps">Map</string>
+    <string name="title_activity_filter">Services filter</string>
     <string name="choose_services_title">Choose services from the list</string>
     <string name="save_filter_btn_text">Save</string>
 </resources>

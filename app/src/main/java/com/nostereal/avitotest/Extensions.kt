@@ -23,10 +23,10 @@ inline fun <reified T : ClusterItem> ClusterManager<T>.addClusterItemsFromList(m
 }
 
 fun <T : Any> InputStream.convertJsonToDataClass(
-    dataClass: KClass<T>
+    dataClass: Class<T>
 ): T {
     val json = this.bufferedReader().use { it.readText() }
-    return Gson().fromJson(json, dataClass.java)
+    return Gson().fromJson(json, dataClass)
 }
 
 fun FloatingActionButton.slideUpAnimation() {

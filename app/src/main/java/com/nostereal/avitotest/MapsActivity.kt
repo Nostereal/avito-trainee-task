@@ -24,6 +24,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var servicesToShow: Set<String> // or HashSet if sequence doesn't matter
 
+    private var job: Job = Job()
+    private val lifecycleScope: CoroutineScope = CoroutineScope(job + Dispatchers.Main)
+
     companion object {
         const val FILTER_REQUEST_CODE: Int = 100
         const val SERVICE_SET_EXTRA_NAME = "Services"
@@ -39,11 +42,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
 
         fabToFilterActivity.setOnClickListener {
-            val intent = Intent(this, FilterActivity::class.java).apply {
-                putExtra(SERVICE_SET_EXTRA_NAME, ParcelableSet(pinsData.services.toSet()))
-                putExtra(SERVICES_TO_SHOW_SET_EXTRA_NAME, ParcelableSet(servicesToShow))
+            if (::pinsData.isInitialized) {
+                val intent = Intent(this, FilterActivity::class.java).apply {
+                    putExtra(SERVICE_SET_EXTRA_NAME, ParcelableSet(pinsData.services.toSet()))
+                    putExtra(SERVICES_TO_SHOW_SET_EXTRA_NAME, ParcelableSet(servicesToShow))
+                }
+                startActivityForResult(intent, FILTER_REQUEST_CODE)
             }
-            startActivityForResult(intent, FILTER_REQUEST_CODE)
+        }
+
+        job = lifecycleScope.launch {
+            if (!::pinsData.isInitialized) readDataFromJson()
         }
     }
 
@@ -102,47 +111,57 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         clusterManager = ClusterManager(this, map)
 
-        CoroutineScope(Dispatchers.Main).launch {
-            readDataFromJson()
-            servicesToShow = pinsData.services.toSet()
-            clusterManager.addClusterItemsFromList(pinsData.pins)
+        lifecycleScope.launch { setupMap() }
+    }
 
-            val randomPinCoordinates = pinsData.pins.random().coordinates
-            map.apply {
-                setOnCameraIdleListener(clusterManager)
-                setOnMarkerClickListener(clusterManager)
-
-                moveCamera(
-                    CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.fromLatLngZoom(
-                            LatLng(
-                                randomPinCoordinates.latitude,
-                                randomPinCoordinates.longitude
-                            ),
-                            11f // zoom level
-                        )
-                    )
-                )
-
-                // slide up fab because of map layout
-                setOnMarkerClickListener {
-                    fabToFilterActivity.slideUpAnimation()
-                    false
-                }
-
-                // slide down fab
-                setOnInfoWindowCloseListener {
-                    fabToFilterActivity.slideDownAnimation()
-                }
-                setOnMapClickListener {
-                    fabToFilterActivity.slideDownAnimation()
-                }
-            }
-        }
+    override fun onDestroy() {
+        super.onDestroy()
+        job.cancel()
     }
 
     private suspend fun readDataFromJson() = withContext(Dispatchers.Default) {
+        Log.d("MapsActivity", "Loading json…")
         val inputStream = assets.open("pins.json")
-        pinsData = inputStream.convertJsonToDataClass(PinsData::class)
+        pinsData = inputStream.convertJsonToDataClass(PinsData::class.java)
+        Log.d("MapsActivity", "Json was loaded successfully")
+        servicesToShow = pinsData.services.toSet()
+    }
+
+    private suspend fun setupMap() {
+        job.join() // wait for data from json
+
+        clusterManager.addClusterItemsFromList(pinsData.pins)
+
+        val randomPinCoordinates = pinsData.pins.random().coordinates
+        map.apply {
+            setOnCameraIdleListener(clusterManager)
+            setOnMarkerClickListener(clusterManager)
+
+            moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.fromLatLngZoom(
+                        LatLng(
+                            randomPinCoordinates.latitude,
+                            randomPinCoordinates.longitude
+                        ),
+                        11.5f // zoom level
+                    )
+                )
+            )
+
+            // slide up fab because of map layout
+            setOnMarkerClickListener {
+                fabToFilterActivity.slideUpAnimation()
+                false
+            }
+
+            // slide down fab
+            setOnInfoWindowCloseListener {
+                fabToFilterActivity.slideDownAnimation()
+            }
+            setOnMapClickListener {
+                fabToFilterActivity.slideDownAnimation()
+            }
+        }
     }
 }

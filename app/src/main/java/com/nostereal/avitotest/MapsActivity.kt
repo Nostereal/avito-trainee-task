@@ -10,9 +10,11 @@ import com.google.android.gms.maps.model.CameraPosition
 
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.material.snackbar.Snackbar
+import com.google.maps.android.clustering.ClusterItem
 import com.google.maps.android.clustering.ClusterManager
 import com.nostereal.avitotest.models.PinsData
 import com.nostereal.avitotest.models.ParcelableSet
+import com.nostereal.avitotest.models.Pin
 import kotlinx.android.synthetic.main.activity_maps.*
 import kotlinx.coroutines.*
 
@@ -20,9 +22,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var map: GoogleMap
     private lateinit var clusterManager: ClusterManager<MapClusterItem>
-    private lateinit var pinsData: PinsData
 
+    private lateinit var pinsData: PinsData
     private lateinit var servicesToShow: Set<String> // or HashSet if sequence doesn't matter
+
+    private var isActivityRecreated = false
 
     private var job: Job = Job()
     private val lifecycleScope: CoroutineScope = CoroutineScope(job + Dispatchers.Main)
@@ -31,6 +35,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         const val FILTER_REQUEST_CODE: Int = 100
         const val SERVICE_SET_EXTRA_NAME = "Services"
         const val SERVICES_TO_SHOW_SET_EXTRA_NAME = "ServicesToShow"
+
+        // for saving state
+        private const val PINS_DATA_KEY = "PinsDataKey"
+        private const val SERVICES_TO_SHOW_KEY = "ShowServicesKey"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,6 +48,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.mapFragmentView) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+        savedInstanceState?.also {
+            Log.d("MapsActivity", "saved state is not null")
+            isActivityRecreated = true
+            servicesToShow = it.getParcelable<ParcelableSet>(SERVICES_TO_SHOW_KEY)!!.data
+            pinsData = it.getParcelable(PINS_DATA_KEY)!!
+        }
 
         fabToFilterActivity.setOnClickListener {
             if (::pinsData.isInitialized) {
@@ -53,6 +68,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         job = lifecycleScope.launch {
             if (!::pinsData.isInitialized) readDataFromJson()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        Log.d("MapsActivity", "Saving state...")
+        outState.apply {
+            putParcelable(SERVICES_TO_SHOW_KEY, ParcelableSet(servicesToShow))
+            putParcelable(PINS_DATA_KEY, pinsData)
         }
     }
 
@@ -84,14 +108,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     Log.d("MapsActivity", "Filtered services != servicesToShow")
 
                     // clear old markers from the map
-                    clusterManager.clearItems()
-                    map.clear()
+                    map.removeItems(clusterManager)
 
                     servicesToShow = filteredServices
-                    val filteredPins = pinsData.pins.filter { it.service in servicesToShow }
+                    val filteredPins: List<Pin> = pinsData.pins.filter { it.service in servicesToShow }
 
-                    clusterManager.addClusterItemsFromList(filteredPins)
-                    clusterManager.cluster() // force clusters update
+                    clusterManager.displayItemsFromList(filteredPins)
                 }
             }
         }
@@ -130,24 +152,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private suspend fun setupMap() {
         job.join() // wait for data from json
 
-        clusterManager.addClusterItemsFromList(pinsData.pins)
+        pinsData.pins.filter { it.service in servicesToShow }.also {
+            clusterManager.addClusterItemsFromList(it)
+        }
 
         val randomPinCoordinates = pinsData.pins.random().coordinates
         map.apply {
             setOnCameraIdleListener(clusterManager)
             setOnMarkerClickListener(clusterManager)
 
-            moveCamera(
-                CameraUpdateFactory.newCameraPosition(
-                    CameraPosition.fromLatLngZoom(
-                        LatLng(
-                            randomPinCoordinates.latitude,
-                            randomPinCoordinates.longitude
-                        ),
-                        11.5f // zoom level
+            // only first time activity created
+            if (!isActivityRecreated) {
+                moveCamera(
+                    CameraUpdateFactory.newCameraPosition(
+                        CameraPosition.fromLatLngZoom(
+                            LatLng(
+                                randomPinCoordinates.latitude,
+                                randomPinCoordinates.longitude
+                            ),
+                            11.5f // zoom level
+                        )
                     )
                 )
-            )
+            }
 
             // slide up fab because of map layout
             setOnMarkerClickListener {
@@ -163,5 +190,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 fabToFilterActivity.slideDownAnimation()
             }
         }
+    }
+
+    private fun <T : ClusterItem> GoogleMap.removeItems(clusterManager: ClusterManager<T>) {
+        clusterManager.clearItems()
+        this.clear()
+    }
+
+    private inline fun <reified T: ClusterItem> ClusterManager<T>.displayItemsFromList(items: List<Pin>) {
+        this.addClusterItemsFromList(items)
+        this.cluster()
     }
 }

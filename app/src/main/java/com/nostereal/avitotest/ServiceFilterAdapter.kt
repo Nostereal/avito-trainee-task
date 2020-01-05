@@ -36,9 +36,7 @@ class ServiceFilterAdapter : RecyclerView.Adapter<ServiceFilterAdapter.ServiceFi
                 text = service
                 isChecked = service in selectedServicesSet
 
-                setOnClickListener {
-                    this.toggle()
-                }
+                setOnClickListener { this.toggle() }
             }
         }
 

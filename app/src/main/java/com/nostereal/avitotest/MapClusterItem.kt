@@ -3,14 +3,25 @@ package com.nostereal.avitotest
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.clustering.ClusterItem
 
-class MapClusterItem(private val lat: Double, private val lng: Double) : ClusterItem {
+class MapClusterItem(private val lat: Double, private val lng: Double, val service: String) :
+    ClusterItem {
 
     private var title: String? = null
     private var snippet: String? = null
 
-    constructor(lat: Double, lng: Double, title: String) : this(lat, lng) { this.title = title}
+    constructor(lat: Double, lng: Double, service: String, title: String) : this(
+        lat,
+        lng,
+        service
+    ) {
+        this.title = title
+    }
 
-    constructor(lat: Double, lng: Double, title: String, snippet: String) : this(lat, lng) {
+    constructor(lat: Double, lng: Double, service: String, title: String, snippet: String) : this(
+        lat,
+        lng,
+        service
+    ) {
         this.title = title
         this.snippet = snippet
     }

@@ -7,7 +7,6 @@ import com.google.maps.android.clustering.ClusterItem
 import com.google.maps.android.clustering.ClusterManager
 import com.nostereal.avitotest.models.Pin
 import java.io.InputStream
-import kotlin.reflect.KClass
 
 inline fun <reified T : ClusterItem> ClusterManager<T>.addClusterItemsFromList(markers: List<Pin>) {
     markers
@@ -15,6 +14,7 @@ inline fun <reified T : ClusterItem> ClusterManager<T>.addClusterItemsFromList(m
             MapClusterItem(
                 pin.coordinates.latitude,
                 pin.coordinates.longitude,
+                pin.service,
                 "Service: ${pin.service}"
             )
         }.forEach { clusterItem ->

@@ -153,7 +153,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         if (pinsData.services.toHashSet() != servicesFromPins) {
             Log.e(
                 "MapsActivity",
-                "Services list declared in the json is different from actual services list." +
+                "Services list declared in the json is different from actual services list. " +
                         "Tell your backender that he has some problem"
             )
             services = servicesFromPins
@@ -172,6 +172,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         pinsData.pins.filter { it.service in servicesToShow }.also {
             clusterManager.addClusterItemsFromList(it)
         }
+        clusterManager.renderer = CustomClusterRenderer(this, map, clusterManager, services)
 
         val randomPinCoordinates = pinsData.pins.random().coordinates
         map.apply {

@@ -2,7 +2,7 @@
 
 ## Demo
 
-![](src-for-readme/app-demo.gif)
+<img src="src-for-readme/app-demo.gif" width="300px" alt="Here should be a demo..."/>
 
 ## About
 

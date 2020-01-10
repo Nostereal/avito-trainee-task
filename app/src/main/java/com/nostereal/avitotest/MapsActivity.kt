@@ -25,6 +25,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var pinsData: PinsData
     private lateinit var servicesToShow: Set<String> // or HashSet if sequence doesn't matter
+    private lateinit var services: Set<String>
 
     private var isActivityRecreated = false
 
@@ -59,7 +60,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         fabToFilterActivity.setOnClickListener {
             if (::pinsData.isInitialized) {
                 val intent = Intent(this, FilterActivity::class.java).apply {
-                    putExtra(SERVICE_SET_EXTRA_NAME, ParcelableSet(pinsData.services.toSet()))
+                    putExtra(SERVICE_SET_EXTRA_NAME, ParcelableSet(services))
                     putExtra(SERVICES_TO_SHOW_SET_EXTRA_NAME, ParcelableSet(servicesToShow))
                 }
                 startActivityForResult(intent, FILTER_REQUEST_CODE)
@@ -111,7 +112,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     map.removeItems(clusterManager)
 
                     servicesToShow = filteredServices
-                    val filteredPins: List<Pin> = pinsData.pins.filter { it.service in servicesToShow }
+                    val filteredPins: List<Pin> =
+                        pinsData.pins.filter { it.service in servicesToShow }
 
                     clusterManager.displayItemsFromList(filteredPins)
                 }
@@ -146,7 +148,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val inputStream = assets.open("pins.json")
         pinsData = inputStream.convertJsonToDataClass(PinsData::class.java)
         Log.d("MapsActivity", "Json was loaded successfully")
-        servicesToShow = pinsData.services.toSet()
+
+        val servicesFromPins: Set<String> = pinsData.pins.map { it.service }.toHashSet()
+        if (pinsData.services.toHashSet() != servicesFromPins) {
+            Log.e(
+                "MapsActivity",
+                "Services list declared in the json is different from actual services list." +
+                        "Tell your backender that he has some problem"
+            )
+            services = servicesFromPins
+            servicesToShow = servicesFromPins
+        } else {
+            pinsData.services.toSet().also {
+                services = it
+                servicesToShow = it
+            }
+        }
     }
 
     private suspend fun setupMap() {
@@ -197,7 +214,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         this.clear()
     }
 
-    private inline fun <reified T: ClusterItem> ClusterManager<T>.displayItemsFromList(items: List<Pin>) {
+    private inline fun <reified T : ClusterItem> ClusterManager<T>.displayItemsFromList(items: List<Pin>) {
         this.addClusterItemsFromList(items)
         this.cluster()
     }

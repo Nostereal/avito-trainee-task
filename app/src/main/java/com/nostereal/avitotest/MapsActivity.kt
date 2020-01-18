@@ -167,7 +167,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private suspend fun setupMap() {
-        job.join() // wait for data from json
+        withContext(Dispatchers.Default) { job.join() } // wait for data from json
 
         pinsData.pins.filter { it.service in servicesToShow }.also {
             clusterManager.addClusterItemsFromList(it)
